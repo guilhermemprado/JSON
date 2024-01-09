@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Editor</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+
+        .container {
+            margin-top: 50px;
+            margin-bottom: 1px;
+        }
+
+        .json-field {
+            margin-left: 45px;
+            border: 1px solid #ddd;
+            padding: 2px;
+            border-radius: 1px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .json-field:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .json-key {
+            font-weight: bold;
+            margin-bottom: 1px;
+            color: #3498db;
+        }
+
+        .custom-text-field {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 1px;
+            border: transparent;
+            background-color: #ffffff;
+            border-radius: 4px;
+        }
+
+        #saveButton {
+            background-color: #3498db;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #saveButton:hover {
+            background-color: #2077b3;
+        }
+
+        ::selection {
+            background-color: #dbdada;
+            color: inherit; 
+        }
+
+        ::-moz-selection {
+            background-color: #dbdada;
+            color: inherit;
+        }
+        :focus {
+            outline: none;
+            outline: none;
+            background-color: #f5f5f5;
+        }
+
+        .toggle-button {
+            background-color: #28a745;
+            border: none;
+            color: #fff;
+            padding: 5px 10px;
+            margin-right: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .json-key-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .toggle-sign {
+            font-size: 18px;
+            color: #2077b3;
+            cursor: pointer;
+            margin-right: 25px;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <input type="file" id="fileInput" accept=".json" class="form-control mb-3">
+
+        <div id="output" class="mb-4 row">
+            <div class="col-6"></div>
+        </div>
+
+        <button id="saveButton" class="btn btn-primary">Salvar</button>
+
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let jsonData;
+
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const jsonContent = e.target.result;
+                    jsonData = JSON.parse(jsonContent);
+
+                    displayData(jsonData, document.getElementById('output'));
+                    enableEditing(document.getElementById('output'));
+                };
+
+                reader.readAsText(file);
+            }
+        });
+
+        function displayData(data, container, key = '', level = 0) {
+            if (typeof data === 'object' && data !== null) {
+                const keys = Object.keys(data);
+
+                for (let i = 0; i < keys.length; i++) {
+                    const currentKey = keys[i];
+
+                    const keyContainer = document.createElement('div');
+                    keyContainer.classList.add('json-key-container');
+
+                    if (level === 0) {
+                        const toggleSpan = document.createElement('span');
+                        toggleSpan.classList.add('toggle-sign');
+                        toggleSpan.innerHTML = '__';
+                        toggleSpan.addEventListener('click', function () {
+                            const valueContainer = keyContainer.nextElementSibling; // .json-field
+                            valueContainer.style.display = valueContainer.style.display === 'none' ? 'block' : 'none';
+                            toggleSpan.innerHTML = valueContainer.style.display === 'none' ? '[  ]' : '__';
+                        });
+                        keyContainer.appendChild(toggleSpan);
+                    }
+
+                    const keyDiv = document.createElement('div');
+                    keyDiv.classList.add('json-key');
+                    keyDiv.innerHTML = currentKey;
+
+                    keyContainer.appendChild(keyDiv);
+
+                    container.appendChild(keyContainer);
+
+                    const valueContainer = document.createElement('div');
+                    valueContainer.classList.add('json-field');
+                    container.appendChild(valueContainer);
+
+                    displayData(data[currentKey], valueContainer, key ? `${key}.${currentKey}` : currentKey, level + 1);
+                }
+            } else {
+                const valueDiv = document.createElement('div');
+                const input = document.createElement('input');
+
+                input.type = 'text';
+                input.value = data;
+                input.classList.add('custom-text-field');
+
+                input.addEventListener('input', function () {
+                    updateJsonData(key, input.value);
+                });
+
+                valueDiv.appendChild(input);
+                container.appendChild(valueDiv);
+            }
+        }
+
+        function enableEditing(container) {
+            const saveButton = document.getElementById('saveButton');
+            saveButton.addEventListener('click', function () {
+                saveChanges();
+            });
+        }
+
+        function updateJsonData(keys, value) {
+            const keyArray = keys.split('.');
+            let currentLevel = jsonData;
+
+            for (let i = 0; i < keyArray.length - 1; i++) {
+                const key = keyArray[i];
+                if (!currentLevel[key] || typeof currentLevel[key] !== 'object') {
+                    currentLevel[key] = {};
+                }
+                currentLevel = currentLevel[key];
+            }
+
+            currentLevel[keyArray[keyArray.length - 1]] = value;
+        }
+
+        function saveChanges() {
+            fetch('/update_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                },
+                body: JSON.stringify(jsonData),
+            })
+            .then(response => response.text())
+            .then(message => console.log(message))
+            .catch(error => console.error('Erro:', error));
+        }
+    </script>
+
+</body>
+</html>
